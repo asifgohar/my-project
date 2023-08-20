@@ -1,4 +1,4 @@
-Instructions are incorrect, if you add metadata startup script instances do not upgrade in place and they are destroyed and recreated which is not what the lab wants so you will get this error: "Please create instances.tf file and import both instances and update them using Terraform.".
+what Instructions are incorrect, if you add metadata startup script instances do not upgrade in place and they are destroyed and recreated which is not what the lab wants so you will get this error: "Please create instances.tf file and import both instances and update them using Terraform.".
 Remove it from your instances.tf and you'll be good.
 
 modules/
