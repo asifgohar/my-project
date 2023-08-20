@@ -1,0 +1,355 @@
+Instructions are incorrect, if you add metadata startup script instances do not upgrade in place and they are destroyed and recreated which is not what the lab wants so you will get this error: "Please create instances.tf file and import both instances and update them using Terraform.".
+Remove it from your instances.tf and you'll be good.
+
+modules/
+└── instances
+├── instances.tf
+├── outputs.tf
+└── variables.tf
+
+└── storage
+├── storage.tf
+├── outputs.tf
+└── variables.tf
+
+touch main.tf variables.tf
+mkdir -p modules/instances
+mkdir -p modules/storage
+
+cd modules/instances
+touch instances.tf variables.tf output.tf
+
+cd ..
+cd storage
+touch storage.tf variables.tf output.tf
+
+cd ..
+cd ..
+
+variables.tf
+
+```
+
+variable "region" {
+    default = "us-east1"
+}
+
+variable "zone" {
+    default = "us-east1-c"
+}
+
+variable "project_id" {
+    default = "qwiklabs-gcp-02-2e28a7a4085e"
+}
+```
+
+
+main.tf
+~~~~~~~~~~
+
+//do not use provider version
+```
+terraform {
+    required_providers {
+        google =  {
+            source = "hashicorp/google"
+        }
+    }   
+}
+
+provider "google" {
+    project = var.project_id
+    region  = var.region
+    zone    = var.zone
+}
+```
+
+
+terraform init
+
+
+
+
+
+
+
+Task 2
+###############
+
+main.tf
+~~~~~
+```
+
+module "instances" {
+    source = "./modules/instances"
+}
+```
+
+terraform init
+
+
+instances.tf
+~~~~~
+
+```
+resource "google_compute_instance" "tf-instance-1" {
+    name         = "tf-instance-1"
+    machine_type = "n1-standard-1"
+    boot_disk       {
+        initialize_params {
+            image = "debian-10-buster-v20221102"
+        }
+    }
+    network_interface {
+        network = "default"
+        access_config {
+        }
+    } 
+    allow_stopping_for_update = true
+}
+
+resource "google_compute_instance" "tf-instance-2"{
+    name         = "tf-instance-2"
+    machine_type = "n1-standard-1"
+    boot_disk       {
+        initialize_params {
+            image = "debian-10-buster-v20221102"
+        }
+    }
+    network_interface {
+        network = "default"
+        access_config {
+        }
+    } 
+    allow_stopping_for_update = true
+}
+
+
+```
+
+
+To import the instance, use the following command:
+
+terraform import module.instances.google_compute_instance.tf-instance-1 tf-instance-1
+
+terraform import module.instances.google_compute_instance.tf-instance-2 tf-instance-2
+
+
+terraform show
+
+terraform plan
+terraform apply
+
+
+
+
+**IMPORTANT: Instructions are incorrect, if you add metadata startup script instances do not upgrade in place and they are destroyed and recreated which is not what the lab wants so you will get this error: "Please create instances.tf file and import both instances and update them using Terraform.".
+Remove it from your instances.tf and you'll be good.
+
+metadata_startup_script = <<-EOT
+        #!/bin/bash
+    EOT**
+    
+
+
+Task 3
+#############
+   
+
+storage.tf
+~~~~
+```
+resource "google_storage_bucket" "storage-bucket"{
+    name = "tf-bucket-146584"
+    location = "US"
+    force_destroy = true
+    uniform_bucket_level_access = true
+}
+```
+
+
+main.tf
+~~~~~~~~
+ ```
+
+module "storage" {
+    source = "./modules/storage"
+} 
+
+```
+ 
+
+terraform init
+terraform apply
+
+
+main.tf
+~~~~~~~~
+Add in provider block
+```
+
+    backend "gcs" {
+        prefix = "terraform/state"
+        bucket = "tf-bucket-305061"
+    }
+```
+
+
+terraform init
+yes
+
+
+
+Task 4
+#############
+
+update instance1 machine type
+```
+
+resource "google_compute_instance" "tf-instance-1" {
+  name         = "tf-instance-1"
+  machine_type = "n1-standard-2" 
+}
+
+```
+
+update instance2 machine type
+```
+
+resource "google_compute_instance" "tf-instance-2" {
+  name         = "tf-instance-2"
+  machine_type = "n1-standard-2" 
+}
+
+```
+
+```
+
+resource "google_compute_instance" "tf-instance-556429"{
+    name         = "tf-instance-556429"
+    machine_type = "n1-standard-2"
+    boot_disk       {
+        initialize_params {
+            image = "debian-10-buster-v20221102"
+        }
+    }
+    network_interface {
+        network = "default"
+        access_config {
+        }
+    } 
+    allow_stopping_for_update = true
+}
+
+
+```
+
+
+terraform init
+terraform apply
+
+
+
+
+task 5
+############
+`
+terraform taint module.instances.google_compute_instance.tf-instance-987888
+`
+terraform plan
+terraform apply
+
+
+Remove the tf-instance-3 resource from the instances.tf file.
+terraform init
+terraform apply
+
+
+
+Task 6
+############
+main.tf
+~~~
+```
+
+module "vpc" {
+    source  = "terraform-google-modules/network/google"
+    version = "3.4.0"
+
+    project_id   = var.project_id
+    network_name = "tf-vpc-657550"
+    routing_mode = "GLOBAL"
+
+    subnets = [
+        {
+            subnet_name           = "subnet-01"
+            subnet_ip             = "10.10.10.0/24"
+            subnet_region         = "us-east1"
+        },
+        {
+            subnet_name           = "subnet-02"
+            subnet_ip             = "10.10.20.0/24"
+            subnet_region         = "us-east1"
+        }]
+}
+
+
+```
+
+terraform init -upgrade
+terraform apply
+
+
+
+
+instances.tf file - update the configuration resources to connect tf-instance-1 to subnet-01 and tf-instance-2 to subnet-02.
+
+
+```
+
+resource "google_compute_instance" "tf-instance-1" {
+    
+    network_interface {
+        network = "tf-vpc-657550"
+        subnetwork = "subnet-01"
+    }
+
+}   
+
+
+resource "google_compute_instance" "tf-instance-2" {
+  
+    network_interface {
+        network = "tf-vpc-657550"
+        subnetwork = "subnet-02"
+    }
+
+} 
+```
+
+
+terraform init
+terraform apply
+
+
+
+Task 7
+#############
+```
+
+resource "google_compute_firewall" "tf-firewall" {
+  name    = "tf-firewall"
+  network = "tf-vpc-657550"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
+  source_tags = ["web"]
+  source_ranges = ["0.0.0.0/0"]
+}
+```
+
+
+terraform apply
